@@ -1,11 +1,28 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { copyFile, mkdir, readFile, rename } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, rename } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { dirname, join, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { menuLyricsState } from "./menu-lyrics-state.js";
 
+export function nativeLyricsPlatform(platform: NodeJS.Platform, disabled?: string) {
+  if (disabled === "0") return null;
+  return platform === "darwin" ? "macos" : platform === "win32" ? "windows" : null;
+}
+
+async function windowsCompiler() {
+  const windows = process.env.SystemRoot || process.env.WINDIR || "C:\\Windows";
+  for (const framework of ["Framework64", "Framework"]) {
+    const compiler = win32.join(windows, "Microsoft.NET", framework, "v4.0.30319", "csc.exe");
+    try { await access(compiler); return compiler; } catch { /* Try the other architecture. */ }
+  }
+  throw new Error("未找到 Windows .NET Framework C# 编译器，请启用或修复 .NET Framework 4.8；Web 可继续使用");
+}
+
 export function startMenuLyrics(port: number) {
-  if (process.platform !== "darwin" || process.env.MUSIC_MENU_LYRICS === "0") return;
+  const platform = nativeLyricsPlatform(process.platform, process.env.MUSIC_MENU_LYRICS);
+  if (!platform) return;
+  const label = platform === "macos" ? "Swift 菜单栏歌词" : "Windows 悬浮歌词";
   let child: ChildProcess | undefined;
   let compiler: ChildProcess | undefined;
   let stopped = false;
@@ -21,45 +38,72 @@ export function startMenuLyrics(port: number) {
     child?.kill();
   };
   process.once("exit", stop);
+  async function compile(command: string, args: string[]) {
+    console.log(`正在编译 ${label}（首次启动或源码更新）…`);
+    await new Promise<void>((resolve, reject) => {
+      compiler = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+      let error = "";
+      const capture = (chunk: Buffer) => { error = (error + chunk.toString()).slice(-4000); };
+      compiler.stdout?.on("data", capture);
+      compiler.stderr?.on("data", capture);
+      compiler.once("error", reject);
+      compiler.once("exit", (code) => code === 0 ? resolve() : reject(new Error(error || `${label}编译失败`)));
+    });
+    compiler = undefined;
+  }
   void (async () => {
-    const source = fileURLToPath(new URL("../native/MenuLyrics/main.swift", import.meta.url));
-    const plist = fileURLToPath(new URL("../native/MenuLyrics/Info.plist", import.meta.url));
-    const hash = createHash("sha256").update(await readFile(source)).update(await readFile(plist))
+    const files = platform === "macos"
+      ? ["MenuLyrics/main.swift", "MenuLyrics/Info.plist"]
+      : ["WindowsLyrics/Program.cs", "WindowsLyrics/app.manifest"];
+    const [source, metadata] = files.map((name) => fileURLToPath(new URL(`../native/${name}`, import.meta.url)));
+    const hash = createHash("sha256").update(await readFile(source)).update(await readFile(metadata))
       .update(process.arch).digest("hex").slice(0, 16);
-    const contents = fileURLToPath(new URL(`../.local/native/${hash}/MusicLyrics.app/Contents/`, import.meta.url));
-    const executable = `${contents}MacOS/MusicLyrics`;
-    await mkdir(`${contents}MacOS`, { recursive: true });
-    try { await readFile(executable); } catch {
+    const directory = platform === "macos"
+      ? fileURLToPath(new URL(`../.local/native/${hash}/MusicLyrics.app/Contents/`, import.meta.url))
+      : fileURLToPath(new URL(`../.local/native/windows-${process.arch}/${hash}/`, import.meta.url));
+    const executable = join(directory, platform === "macos" ? "MacOS/MusicLyrics" : "MusicLyrics.exe");
+    await mkdir(dirname(executable), { recursive: true });
+    try { await access(executable); } catch {
       if (stopped) return;
-      console.log("正在编译 Swift 菜单栏歌词（首次启动）…");
-      const temporary = `${executable}.${process.pid}`;
-      await new Promise<void>((resolve, reject) => {
-        compiler = spawn("/usr/bin/xcrun", ["swiftc", "-O", "-framework", "AppKit", source, "-o", temporary], {
-          stdio: ["ignore", "ignore", "pipe"],
-        });
-        let error = "";
-        compiler.stderr?.on("data", (chunk) => { error = (error + chunk).slice(-4000); });
-        compiler.once("error", reject);
-        compiler.once("exit", (code) => code === 0 ? resolve() : reject(new Error(error || "Swift 编译失败")));
-      });
-      compiler = undefined;
+      const temporary = `${executable}.${process.pid}.tmp`;
+      if (platform === "macos") {
+        await compile("/usr/bin/xcrun", ["swiftc", "-O", "-framework", "AppKit", source, "-o", temporary]);
+      } else {
+        const csc = await windowsCompiler();
+        if (stopped) return;
+        const framework = dirname(csc);
+        const references = ["System.dll", "System.Core.dll", "System.Xaml.dll", "System.Web.Extensions.dll",
+          "System.Windows.Forms.dll", "System.Drawing.dll", "WPF/WindowsBase.dll",
+          "WPF/PresentationCore.dll", "WPF/PresentationFramework.dll"];
+        await compile(csc, ["/nologo", "/target:winexe", "/platform:anycpu", "/optimize+", "/utf8output",
+          `/out:${temporary}`, `/win32manifest:${metadata}`,
+          ...references.map((name) => `/reference:${join(framework, name)}`), source]);
+      }
       if (stopped) return;
       await rename(temporary, executable);
     }
     if (stopped) return;
-    await copyFile(plist, `${contents}Info.plist`);
+    if (platform === "macos") await copyFile(metadata, join(directory, "Info.plist"));
     if (stopped) return;
-    child = spawn(executable, [`http://127.0.0.1:${port}`], { stdio: ["pipe", "ignore", "pipe"] });
+    child = spawn(executable, [`http://127.0.0.1:${port}`], {
+      stdio: ["pipe", "ignore", "pipe"], windowsHide: true,
+    });
     child.stdin!.on("error", () => {});
     child.stderr?.on("data", (chunk) => process.stderr.write(chunk));
-    child.once("error", (error) => console.warn("菜单栏歌词启动失败：", error.message));
-    child.once("exit", () => { unsubscribe(); clearInterval(expiry); });
+    child.once("error", (error) => {
+      unsubscribe(); clearInterval(expiry);
+      console.warn(`${label}启动失败：`, error.message);
+    });
+    child.once("spawn", () => console.log(`${label}已启动；停止 Web 服务时自动退出。`));
+    child.once("exit", (code) => {
+      unsubscribe(); clearInterval(expiry);
+      if (!stopped && code) console.warn(`${label}异常退出（${code}），Web 可继续使用。`);
+    });
     unsubscribe = menuLyricsState.subscribe((state) => {
       if (!child?.stdin?.destroyed) child?.stdin?.write(`${JSON.stringify(state)}\n`);
     });
-    console.log("Swift 菜单栏歌词已启动；停止 Web 服务时自动退出。");
   })().catch((error) => {
     clearInterval(expiry);
-    if (!stopped) console.warn("菜单栏歌词不可用，Web 仍可使用：", error.message);
+    if (!stopped) console.warn(`${label}不可用，Web 仍可使用：`, error.message);
   });
 }
