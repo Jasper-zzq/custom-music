@@ -1,0 +1,72 @@
+[
+  {
+    "file": "vendor/audiomack.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/audiomack/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "1b1f49fc1e0aa5933c3b45ce999d975e4f7fc5f69df2a487dd87830555cf01d5",
+    "modified": false
+  },
+  {
+    "file": "vendor/bilibili.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/bilibili/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "3e49093f80d553d96439745891812c848388a32ae7dca346c1c3282748783be1",
+    "modified": false
+  },
+  {
+    "file": "vendor/geciwang.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/geciwang/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "b953571441c4d2ef3216d505fdaac2577dad1695e7009382bd4b83f1dd09c4f2",
+    "modified": false
+  },
+  {
+    "file": "vendor/geciqianxun.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/geciqianxun/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "b60977180a3ed5a556fc73dacc1a36a843a31f636a05664ee9e987697b40b27f",
+    "modified": false
+  },
+  {
+    "file": "vendor/kuaishou.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/kuaishou/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "6d5c776a52a5832f5927215605a52174f0c5e631ebff8d6a1edc5a60dcc680de",
+    "modified": false
+  },
+  {
+    "file": "vendor/maoerfm.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/maoerfm/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "0eaf6335d85ae9d0d8908fdd159baac22a2881247435c4679e62a43e24121b7f",
+    "modified": false
+  },
+  {
+    "file": "vendor/navidrome.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/navidrome/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "203d9f1f941ab9cf33021ab7a0cefb844dfa714b34e8140471aff30323897d9d",
+    "modified": true
+  },
+  {
+    "file": "vendor/yinyuetai.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/yinyuetai/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "f87b15752659bd4882e70b71af0fb70af0a6b40078b21dc54caf793ff124d90d",
+    "modified": false
+  },
+  {
+    "file": "vendor/webdav.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/webdav/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "986370ba0e41ac21c27b75b1a917639f09fc1539938b341f5aa3cb0c1d0a4288",
+    "modified": true
+  },
+  {
+    "file": "vendor/youtube.cjs",
+    "source": "https://gitee.com/maotoumao/MusicFreePlugins/raw/v0.1/dist/youtube/index.js",
+    "retrievedAt": "2026-10-30",
+    "localSha256": "75b8a113b25793446a9a17d1308d29c60a1e1925b44c45ab3e72a804459fef5e",
+    "modified": false
+  }
+]
